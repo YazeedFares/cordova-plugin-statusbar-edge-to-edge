@@ -172,7 +172,7 @@ public class StatusBar extends CordovaPlugin {
         if (Build.VERSION.SDK_INT >= 21) {
             if (colorPref != null && !colorPref.isEmpty()) {
                 lastSetColor = Color.parseColor(colorPref);
-                trySetStatusBarColor(lastSetColor);
+                setStatusBarColor(lastSetColor);
             }
         }
     }
@@ -180,15 +180,15 @@ public class StatusBar extends CordovaPlugin {
     private void setStatusBarTransparent(final boolean isTransparent) {
         if (Build.VERSION.SDK_INT >= 21) {
             if (isTransparent) {
-                trySetStatusBarColor(Color.TRANSPARENT);
+                setStatusBarColor(Color.TRANSPARENT);
             }
             else {
-                trySetStatusBarColor(lastSetColor);
+                setStatusBarColor(lastSetColor);
             }
         }
     }
 
-    private void trySetStatusBarColor(int colorPref) {
+    private void setStatusBarColor(int colorPref) {
         final Window window = cordova.getActivity().getWindow();
         // Method and constants not available on all SDKs but we want to be able to compile this code with any SDK
         window.clearFlags(0x04000000); // SDK 19: WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
