@@ -51,6 +51,7 @@ public class StatusBar extends CordovaPlugin {
 
     private static final String STYLE_DEFAULT = "default";
     private static final String STYLE_LIGHT_CONTENT = "lightcontent";
+    private static int lastSetColor = 0;
 
     private AppCompatActivity activity;
     private Window window;
@@ -168,31 +169,38 @@ public class StatusBar extends CordovaPlugin {
     }
 
     private void setStatusBarBackgroundColor(final String colorPref) {
-        if (colorPref.isEmpty()) return;
-
-        int color;
-        try {
-            color = Color.parseColor(colorPref);
-        } catch (IllegalArgumentException ignore) {
-            LOG.e(TAG, "Invalid hexString argument, use f.i. '#999999'");
-            return;
+        if (Build.VERSION.SDK_INT >= 21) {
+            if (colorPref != null && !colorPref.isEmpty()) {
+                lastSetColor = Color.parseColor(colorPref);
+                trySetStatusBarColor(lastSetColor);
+            }
         }
-
-        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS); // SDK 19-30
-        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS); // SDK 21
-        window.setStatusBarColor(color);
     }
 
     private void setStatusBarTransparent(final boolean isTransparent) {
+        if (Build.VERSION.SDK_INT >= 21) {
+            if (isTransparent) {
+                trySetStatusBarColor(Color.TRANSPARENT);
+            }
+            else {
+                trySetStatusBarColor(lastSetColor);
+            }
+        }
+    }
+
+    private void trySetStatusBarColor(int colorPref) {
         final Window window = cordova.getActivity().getWindow();
-        int visibility = isTransparent
-            ? View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-            : View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_VISIBLE;
-
-        window.getDecorView().setSystemUiVisibility(visibility);
-
-        if (isTransparent) {
-            window.setStatusBarColor(Color.TRANSPARENT);
+        // Method and constants not available on all SDKs but we want to be able to compile this code with any SDK
+        window.clearFlags(0x04000000); // SDK 19: WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+        window.addFlags(0x80000000); // SDK 21: WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        try {
+            // Using reflection makes sure any 5.0+ device will work without having to compile with SDK level 21
+            window.getClass().getMethod("setStatusBarColor", int.class).invoke(window, colorPref);
+        } catch (IllegalArgumentException ignore) {
+            LOG.e(TAG, "Invalid hexString argument, use f.i. '#999999'");
+        } catch (Exception ignore) {
+            // this should not happen, only in case Android removes this method in a version > 21
+            LOG.w(TAG, "Method window.setStatusBarColor not found for SDK level " + Build.VERSION.SDK_INT);
         }
     }
 
